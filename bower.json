@@ -1,0 +1,25 @@
+{
+  "name": "form-autofill",
+  "version": "0.0.0",
+  "homepage": "https://github.com/alexdiliberto/form-autofill",
+  "authors": [
+    "Alex DiLiberto <alex@alexdiliberto.com>"
+  ],
+  "moduleType": [
+    "amd",
+    "es6",
+    "globals",
+    "node"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "chance": "~0.5.6"
+  }
+}
