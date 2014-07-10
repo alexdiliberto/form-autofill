@@ -2,6 +2,10 @@
 var Chance = require("./chance")["default"] || require("./chance");
 
 var chance = new Chance();
+
+/**
+  Chance JS helper functions
+*/
 var title = function() { return chance.prefix(); };
 var firstname = function() { return chance.first(); };
 var lastname = function() { return chance.last(); };
@@ -20,6 +24,11 @@ var ssn = function () {
 var capitalword = function() { return chance.capitalize(chance.word()); };
 var password = function() { return chance.string({ length: 10, pool: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#' }); };
 var birthday = function() { return chance.birthday({ string: true }); };
+
+/**
+  Dictionary of form input names.
+  Update the ID properties's to match your form input names.
+*/
 var formnametable = function() {
   var first = firstname(),
       last = lastname(),
@@ -44,6 +53,9 @@ var formnametable = function() {
   };
 };
 
+/**
+  Public API - Autofill the form
+*/
 var fill = function() {
   var form_names = formnametable();
 
