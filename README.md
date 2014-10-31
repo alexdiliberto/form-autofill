@@ -3,7 +3,7 @@ form-autofill
 
 Autofill your web forms with random test data for quick and easy testing.
 
-![form-autofill-demo](http://g.recordit.co/xKwWeFmU76.gif)
+![form-autofill-demo](http://recordit.co/IQyjCsR7gh/gif)
 
 ### Build
 ```bash
