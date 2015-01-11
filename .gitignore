@@ -15,7 +15,7 @@ src/chance.js
 
 # Always-ignore directories
 node_modules/
-vendor/
+bower_components/
 tmp/
 
 # OS or Editor folders

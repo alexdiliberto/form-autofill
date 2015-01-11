@@ -7,7 +7,8 @@ Autofill your web forms with random test data for quick and easy testing.
 
 ### Build
 ```bash
-bower install
+bower i
+npm i
 broccoli build dist
 ```
 
