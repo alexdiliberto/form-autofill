@@ -5,7 +5,12 @@ Autofill your web forms with random test data for quick and easy testing.
 
 ![form-autofill-demo](http://recordit.co/IQyjCsR7gh/gif)
 
-### Build
+### Install
+```bash
+npm install --save-dev form-autofill
+```
+
+### Development
 ```bash
 bower i
 npm i
