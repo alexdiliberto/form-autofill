@@ -28,8 +28,5 @@
     "broccoli-file-mover": "^0.4.2",
     "broccoli-funnel": "^0.1.7",
     "broccoli-merge-trees": "^0.2.1"
-  },
-  "devDependencies": {
-    "broccoli-inspect": "0.0.4"
   }
 }
