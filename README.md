@@ -26,6 +26,12 @@ npm i
 broccoli build dist
 ```
 
+### Test
+```bash
+ws;                           #Start localserver at http://localhost:8000
+casperjs test test/runner.js; #Execute CasperJS test runner
+```
+
 [npm-url]: https://npmjs.com/package/form-autofill
 [github-release-url]: https://github.com/alexdiliberto/form-autofill/releases
 [npm-dm-badge-svg]: https://img.shields.io/npm/dm/form-autofill.svg

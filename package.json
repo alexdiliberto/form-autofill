@@ -28,6 +28,9 @@
   },
   "devDependencies": {
     "broccoli": "^0.13.3",
-    "broccoli-cli": "0.0.1"
+    "broccoli-cli": "0.0.1",
+    "casperjs": "^1.1.0-beta3",
+    "local-web-server": "^0.5.16",
+    "phantomjs": "^1.9.13"
   }
 }
