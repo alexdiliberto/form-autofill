@@ -20,6 +20,6 @@
     "tests"
   ],
   "dependencies": {
-    "chance": "~0.7.1"
+    "chance": "~0.7.3"
   }
 }
