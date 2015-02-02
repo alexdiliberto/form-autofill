@@ -16,7 +16,10 @@ npm install --save-dev form-autofill
 
 ### Run (Global Scope)
 ```js
-FormAutofill.fill();
+<script src="./node_modules/form-autofill/dist/globals/main.js"></script>
+<script>
+  FormAutofill.fill();
+</script>
 ```
 
 ### Contribute
