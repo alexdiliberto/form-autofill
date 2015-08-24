@@ -1,16 +1,17 @@
-var distUMD = require('broccoli-dist-es6-module');
-var Funnel = require('broccoli-funnel');
+var distUMD    = require('broccoli-dist-es6-module');
+var Funnel     = require('broccoli-funnel');
 var mergeTrees = require('broccoli-merge-trees');
+var log        = require('broccoli-stew').log;
 
-/* Copy chance.js from bower into the src directory */
-var copyChanceToSrc = new Funnel('bower_components/chance', {
-  files: ['chance.js'],
-  destDir: '../../src'
+// Input tree with chance.js file from bower
+var chanceJsFile = new Funnel('bower_components', {
+  srcDir:  'chance',
+  files:   ['chance.js']
 });
 
-var outputTree = mergeTrees(['src', copyChanceToSrc]);
+var outputTree = mergeTrees(['src', chanceJsFile]);
 
-/* Author form-autofill with ES6 modules and distribute with UMD */
+// Author form-autofill with ES6 modules and distribute with UMD
 outputTree = distUMD(outputTree, {
   // the entry script, and module that becomes the global
   main: 'form-autofill',
