@@ -1,9 +1,12 @@
 {
   "name": "form-autofill",
-  "version": "0.0.0",
-  "homepage": "https://github.com/alexdiliberto/form-autofill",
+  "description": "Autofill your web forms with random test data for quick and easy testing.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alexdiliberto/form-autofill"
+  },
   "authors": [
-    "Alex DiLiberto <alex@alexdiliberto.com>"
+    "Alex DiLiberto <npm@alexdiliberto.com>"
   ],
   "moduleType": [
     "amd",
@@ -20,6 +23,6 @@
     "tests"
   ],
   "dependencies": {
-    "chance": "~0.7.3"
+    "chance": "~0.7.6"
   }
 }

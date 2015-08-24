@@ -26,7 +26,7 @@ npm install --save-dev form-autofill
 ```bash
 bower i
 npm i
-broccoli build dist
+./build.sh
 ```
 
 ### Test

@@ -15,20 +15,21 @@
     "random",
     "form"
   ],
-  "author": "Alex DiLiberto",
+  "author": "Alex DiLiberto <npm@alexdiliberto.com>",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/alexdiliberto/form-autofill/issues"
   },
   "homepage": "https://github.com/alexdiliberto/form-autofill",
   "devDependencies": {
-    "broccoli": "^0.13.3",
-    "broccoli-cli": "0.0.1",
+    "broccoli": "^0.16.7",
+    "broccoli-cli": "1.0.0",
     "broccoli-dist-es6-module": "^0.2.1",
-    "broccoli-funnel": "^0.2.0",
-    "broccoli-merge-trees": "^0.2.1",
+    "broccoli-funnel": "^0.2.8",
+    "broccoli-merge-trees": "^0.2.3",
+    "broccoli-stew": "^0.3.5",
     "casperjs": "^1.1.0-beta3",
-    "local-web-server": "^0.5.17",
-    "phantomjs": "^1.9.13"
+    "local-web-server": "^0.5.22",
+    "phantomjs": "^1.9.18"
   }
 }

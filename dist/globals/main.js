@@ -1324,7 +1324,7 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
 },{}],4:[function(_dereq_,module,exports){
 (function (Buffer){
 "use strict";
-//  Chance.js 0.7.3
+//  Chance.js 0.7.6
 //  http://chancejs.com
 //  (c) 2013 Victor Quinn
 //  Chance may be freely distributed or modified under the MIT license.
@@ -1345,7 +1345,7 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
     // Constructor
     function Chance (seed) {
         if (!(this instanceof Chance)) {
-            return new Chance(seed);
+            return seed == null ? new Chance() : new Chance(seed);
         }
 
         // if user has provided a function, use that as the generator
@@ -1376,6 +1376,7 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
 
         // If no generator function was provided, use our MT
         this.mt = this.mersenne_twister(this.seed);
+        this.bimd5 = this.blueimp_md5();
         this.random = function () {
             return this.mt.random(this.seed);
         };
@@ -1383,7 +1384,7 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
         return this;
     }
 
-    Chance.prototype.VERSION = "0.7.3";
+    Chance.prototype.VERSION = "0.7.6";
 
     // Random helper functions
     function initOptions(options, defaults) {
@@ -1426,11 +1427,25 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
 
     // -- Basics --
 
+    /**
+     *  Return a random bool, either true or false
+     *
+     *  @param {Object} [options={ likelihood: 50 }] alter the likelihood of
+     *    receiving a true or false value back.
+     *  @throws {RangeError} if the likelihood is out of bounds
+     *  @returns {Bool} either true or false
+     */
     Chance.prototype.bool = function (options) {
-
         // likelihood of success (true)
         options = initOptions(options, {likelihood : 50});
 
+        // Note, we could get some minor perf optimizations by checking range
+        // prior to initializing defaults, but that makes code a bit messier
+        // and the check more complicated as we have to check existence of
+        // the object then existence of the key before checking constraints.
+        // Since the options initialization should be minor computationally,
+        // decision made for code cleanliness intentionally. This is mentioned
+        // here as it's the first occurrence, will not be mentioned again.
         testRange(
             options.likelihood < 0 || options.likelihood > 100,
             "Chance: Likelihood accepts values from 0 to 100."
@@ -1439,17 +1454,23 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
         return this.random() * 100 < options.likelihood;
     };
 
+    /**
+     *  Return a random character.
+     *
+     *  @param {Object} [options={}] can specify a character pool, only alpha,
+     *    only symbols, and casing (lower or upper)
+     *  @returns {String} a single random character
+     *  @throws {RangeError} Can only specify alpha or symbols, not both
+     */
     Chance.prototype.character = function (options) {
         options = initOptions(options);
-
-        var symbols = "!@#$%^&*()[]",
-            letters, pool;
-
         testRange(
             options.alpha && options.symbols,
             "Chance: Cannot specify both alpha and symbols."
         );
 
+        var symbols = "!@#$%^&*()[]",
+            letters, pool;
 
         if (options.casing === 'lower') {
             letters = CHARS_LOWER;
@@ -1478,16 +1499,23 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
     // It could be 14.9000 but in JavaScript, when this is cast as a number,
     // the trailing zeroes are dropped. Left to the consumer if trailing zeroes are
     // needed
+    /**
+     *  Return a random floating point number
+     *
+     *  @param {Object} [options={}] can specify a fixed precision, min, max
+     *  @returns {Number} a single floating point number
+     *  @throws {RangeError} Can only specify fixed or precision, not both. Also
+     *    min cannot be greater than max
+     */
     Chance.prototype.floating = function (options) {
-        var num;
-
         options = initOptions(options, {fixed : 4});
-        var fixed = Math.pow(10, options.fixed);
-
         testRange(
             options.fixed && options.precision,
             "Chance: Cannot specify both fixed and precision."
         );
+
+        var num;
+        var fixed = Math.pow(10, options.fixed);
 
         var max = MAX_INT / fixed;
         var min = -max;
@@ -1501,7 +1529,7 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
             "Chance: Max specified is out of range with fixed. Max should be, at most, " + max
         );
 
-        options = initOptions(options, {min : min, max : max});
+        options = initOptions(options, { min : min, max : max });
 
         // Todo - Make this work!
         // options.precision = (typeof options.precision !== "undefined") ? options.precision : false;
@@ -1512,34 +1540,55 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
         return parseFloat(num_fixed);
     };
 
-    // NOTE the max and min are INCLUDED in the range. So:
-    //
-    // chance.natural({min: 1, max: 3});
-    //
-    // would return either 1, 2, or 3.
-
+    /**
+     *  Return a random integer
+     *
+     *  NOTE the max and min are INCLUDED in the range. So:
+     *  chance.integer({min: 1, max: 3});
+     *  would return either 1, 2, or 3.
+     *
+     *  @param {Object} [options={}] can specify a min and/or max
+     *  @returns {Number} a single random integer number
+     *  @throws {RangeError} min cannot be greater than max
+     */
     Chance.prototype.integer = function (options) {
-
         // 9007199254740992 (2^53) is the max integer number in JavaScript
         // See: http://vq.io/132sa2j
         options = initOptions(options, {min: MIN_INT, max: MAX_INT});
-
         testRange(options.min > options.max, "Chance: Min cannot be greater than Max.");
 
         return Math.floor(this.random() * (options.max - options.min + 1) + options.min);
     };
 
+    /**
+     *  Return a random natural
+     *
+     *  NOTE the max and min are INCLUDED in the range. So:
+     *  chance.natural({min: 1, max: 3});
+     *  would return either 1, 2, or 3.
+     *
+     *  @param {Object} [options={}] can specify a min and/or max
+     *  @returns {Number} a single random integer number
+     *  @throws {RangeError} min cannot be greater than max
+     */
     Chance.prototype.natural = function (options) {
         options = initOptions(options, {min: 0, max: MAX_INT});
+        testRange(options.min < 0, "Chance: Min cannot be less than zero.");
         return this.integer(options);
     };
 
+    /**
+     *  Return a random string
+     *
+     *  @param {Object} [options={}] can specify a length
+     *  @returns {String} a string of random length
+     *  @throws {RangeError} length cannot be less than zero
+     */
     Chance.prototype.string = function (options) {
-        options = initOptions(options);
-
-        var length = options.length || this.natural({min: 5, max: 20}),
-            pool = options.pool,
-            text = this.n(this.character, length, {pool: pool});
+        options = initOptions(options, { length: this.natural({min: 5, max: 20}) });
+        testRange(options.length < 0, "Chance: Length cannot be less than zero.");
+        var length = options.length,
+            text = this.n(this.character, length, options);
 
         return text.join("");
     };
@@ -1559,9 +1608,23 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
         return this;
     };
 
-    // Given a function that generates something random and a number of items to generate,
-    // return an array of items where none repeat.
+    /**
+     *  Given a function that generates something random and a number of items to generate,
+     *    return an array of items where none repeat.
+     *
+     *  @param {Function} fn the function that generates something random
+     *  @param {Number} num number of terms to generate
+     *  @param {Object} options any options to pass on to the generator function
+     *  @returns {Array} an array of length `num` with every item generated by `fn` and unique
+     *
+     *  There can be more parameters after these. All additional parameters are provided to the given function
+     */
     Chance.prototype.unique = function(fn, num, options) {
+        testRange(
+            typeof fn !== "function",
+            "Chance: The first argument must be a function."
+        );
+
         options = initOptions(options, {
             // Default comparator to check that val is not already in arr.
             // Should return `false` if item not in array, `true` otherwise
@@ -1589,11 +1652,19 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
 
     /**
      *  Gives an array of n random terms
-     *  @param fn the function that generates something random
-     *  @param n number of terms to generate
+     *
+     *  @param {Function} fn the function that generates something random
+     *  @param {Number} n number of terms to generate
+     *  @returns {Array} an array of length `n` with items generated by `fn`
+     *
      *  There can be more parameters after these. All additional parameters are provided to the given function
      */
     Chance.prototype.n = function(fn, n) {
+        testRange(
+            typeof fn !== "function",
+            "Chance: The first argument must be a function."
+        );
+
         if (typeof n === 'undefined') {
             n = 1;
         }
@@ -1852,6 +1923,81 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
         return this.pick(this.get("lastNames"));
     };
 
+    Chance.prototype.mrz = function (options) {
+        var checkDigit = function (input) {
+            var alpha = "<ABCDEFGHIJKLMNOPQRSTUVWXYXZ".split(''),
+                multipliers = [ 7, 3, 1 ],
+                runningTotal = 0;
+
+            if (typeof input !== 'string') {
+                input = input.toString();
+            }
+
+            input.split('').forEach(function(character, idx) {
+                var pos = alpha.indexOf(character);
+
+                if(pos !== -1) {
+                    character = pos === 0 ? 0 : pos + 9;
+                } else {
+                    character = parseInt(character, 10);
+                }
+                character *= multipliers[idx % multipliers.length];
+                runningTotal += character;
+            });
+            return runningTotal % 10;
+        };
+        var generate = function (opts) {
+            var pad = function (length) {
+                return new Array(length + 1).join('<');
+            };
+            var number = [ 'P<',
+                           opts.issuer,
+                           opts.last.toUpperCase(),
+                           '<<',
+                           opts.first.toUpperCase(),
+                           pad(39 - (opts.last.length + opts.first.length + 2)),
+                           opts.passportNumber,
+                           checkDigit(opts.passportNumber),
+                           opts.nationality,
+                           opts.dob,
+                           checkDigit(opts.dob),
+                           opts.gender,
+                           opts.expiry,
+                           checkDigit(opts.expiry),
+                           pad(14),
+                           checkDigit(pad(14)) ].join('');
+
+            return number +
+                (checkDigit(number.substr(44, 10) +
+                            number.substr(57, 7) +
+                            number.substr(65, 7)));
+        };
+
+        var that = this;
+
+        options = initOptions(options, {
+            first: this.first(),
+            last: this.last(),
+            passportNumber: this.integer({min: 100000000, max: 999999999}),
+            dob: (function () {
+                var date = that.birthday({type: 'adult'});
+                return [date.getFullYear().toString().substr(2),
+                        that.pad(date.getMonth() + 1, 2),
+                        that.pad(date.getDate(), 2)].join('');
+            }()),
+            expiry: (function () {
+                var date = new Date();
+                return [(date.getFullYear() + 5).toString().substr(2),
+                        that.pad(date.getMonth() + 1, 2),
+                        that.pad(date.getDate(), 2)].join('');
+            }()),
+            gender: this.gender() === 'Female' ? 'F': 'M',
+            issuer: 'GBR',
+            nationality: 'GBR'
+        });
+        return generate (options);
+    };
+
     Chance.prototype.name = function (options) {
         options = initOptions(options);
 
@@ -1941,7 +2087,9 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
             { name: 'Medical Doctor', abbreviation: 'M.D.' },
             { name: 'Senior', abbreviation: 'Sr.' },
             { name: 'The Third', abbreviation: 'III' },
-            { name: 'The Fourth', abbreviation: 'IV' }
+            { name: 'The Fourth', abbreviation: 'IV' },
+            { name: 'Bachelor of Engineering', abbreviation: 'B.E' },
+            { name: 'Bachelor of Technology', abbreviation: 'B.TECH' }
         ];
         return suffixes;
     };
@@ -1989,12 +2137,98 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
     // -- End Mobile --
 
     // -- Web --
+    Chance.prototype.avatar = function (options) {
+        var url = null;
+        var URL_BASE = '//www.gravatar.com/avatar/';
+        var PROTOCOLS = {
+            http: 'http',
+            https: 'https'
+        };
+        var FILE_TYPES = {
+            bmp: 'bmp',
+            gif: 'gif',
+            jpg: 'jpg',
+            png: 'png'
+        };
+        var FALLBACKS = {
+            '404': '404', // Return 404 if not found
+            mm: 'mm', // Mystery man
+            identicon: 'identicon', // Geometric pattern based on hash
+            monsterid: 'monsterid', // A generated monster icon
+            wavatar: 'wavatar', // A generated face
+            retro: 'retro', // 8-bit icon
+            blank: 'blank' // A transparent png
+        };
+        var RATINGS = {
+            g: 'g',
+            pg: 'pg',
+            r: 'r',
+            x: 'x'
+        };
+        var opts = {
+            protocol: null,
+            email: null,
+            fileExtension: null,
+            size: null,
+            fallback: null,
+            rating: null
+        };
+
+        if (!options) {
+            // Set to a random email
+            opts.email = this.email();
+            options = {};
+        }
+        else if (typeof options === 'string') {
+            opts.email = options;
+            options = {};
+        }
+        else if (typeof options !== 'object') {
+            return null;
+        }
+        else if (options.constructor === 'Array') {
+            return null;
+        }
+
+        opts = initOptions(options, opts);
+
+        if (!opts.email) {
+            // Set to a random email
+            opts.email = this.email();
+        }
+
+        // Safe checking for params
+        opts.protocol = PROTOCOLS[opts.protocol] ? opts.protocol + ':' : '';
+        opts.size = parseInt(opts.size, 0) ? opts.size : '';
+        opts.rating = RATINGS[opts.rating] ? opts.rating : '';
+        opts.fallback = FALLBACKS[opts.fallback] ? opts.fallback : '';
+        opts.fileExtension = FILE_TYPES[opts.fileExtension] ? opts.fileExtension : '';
+
+        url =
+            opts.protocol +
+            URL_BASE +
+            this.bimd5.md5(opts.email) +
+            (opts.fileExtension ? '.' + opts.fileExtension : '') +
+            (opts.size || opts.rating || opts.fallback ? '?' : '') +
+            (opts.size ? '&s=' + opts.size.toString() : '') +
+            (opts.rating ? '&r=' + opts.rating : '') +
+            (opts.fallback ? '&d=' + opts.fallback : '')
+            ;
+
+        return url;
+    };
+
     Chance.prototype.color = function (options) {
         function gray(value, delimiter) {
             return [value, value, value].join(delimiter || '');
         }
 
-        options = initOptions(options, {format: this.pick(['hex', 'shorthex', 'rgb', '0x']), grayscale: false, casing: 'lower'});
+        options = initOptions(options, {
+            format: this.pick(['hex', 'shorthex', 'rgb', 'rgba', '0x']),
+            grayscale: false,
+            casing: 'lower'
+        });
+
         var isGrayscale = options.grayscale;
         var colorValue;
 
@@ -2010,10 +2244,16 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
             } else {
                 colorValue = 'rgb(' + this.natural({max: 255}) + ',' + this.natural({max: 255}) + ',' + this.natural({max: 255}) + ')';
             }
+        } else if (options.format === 'rgba') {
+            if (isGrayscale) {
+                colorValue = 'rgba(' + gray(this.natural({max: 255}), ',') + ',' + this.floating({min:0, max:1}) + ')';
+            } else {
+                colorValue = 'rgba(' + this.natural({max: 255}) + ',' + this.natural({max: 255}) + ',' + this.natural({max: 255}) + ',' + this.floating({min:0, max:1}) + ')';
+            }
         } else if (options.format === '0x') {
             colorValue = '0x' + (isGrayscale ? gray(this.hash({length: 2})) : this.hash({length: 6}));
         } else {
-            throw new Error('Invalid format provided. Please provide one of "hex", "shorthex", "rgb" or "0x".');
+            throw new RangeError('Invalid format provided. Please provide one of "hex", "shorthex", "rgb", "rgba", or "0x".');
         }
 
         if (options.casing === 'upper' ) {
@@ -2098,8 +2338,12 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
     };
 
     Chance.prototype.altitude = function (options) {
-        options = initOptions(options, {fixed : 5, max: 8848});
-        return this.floating({min: 0, max: options.max, fixed: options.fixed});
+        options = initOptions(options, {fixed: 5, min: 0, max: 8848});
+        return this.floating({
+            min: options.min,
+            max: options.max,
+            fixed: options.fixed
+        });
     };
 
     Chance.prototype.areacode = function (options) {
@@ -2117,7 +2361,6 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
     };
 
     Chance.prototype.coordinates = function (options) {
-        options = initOptions(options);
         return this.latitude(options) + ', ' + this.longitude(options);
     };
 
@@ -2132,8 +2375,12 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
     };
 
     Chance.prototype.depth = function (options) {
-        options = initOptions(options, {fixed: 5, min: -2550});
-        return this.floating({min: options.min, max: 0, fixed: options.fixed});
+        options = initOptions(options, {fixed: 5, min: -2550, max: 0});
+        return this.floating({
+            min: options.min,
+            max: options.max,
+            fixed: options.fixed
+        });
     };
 
     Chance.prototype.geohash = function (options) {
@@ -2142,7 +2389,6 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
     };
 
     Chance.prototype.geojson = function (options) {
-        options = initOptions(options);
         return this.latitude(options) + ', ' + this.longitude(options) + ', ' + this.altitude(options);
     };
 
@@ -2337,13 +2583,19 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
             date = new Date(this.natural({min: min, max: max}));
         } else {
             var m = this.month({raw: true});
+            var daysInMonth = m.days;
+
+            if(options && options.month) {
+                // Mod 12 to allow months outside range of 0-11 (not encouraged, but also not prevented).
+                daysInMonth = this.get('months')[((options.month % 12) + 12) % 12].days;
+            }
 
             options = initOptions(options, {
                 year: parseInt(this.year(), 10),
                 // Necessary to subtract 1 because Date() 0-indexes month but not day or year
                 // for some reason.
                 month: m.numeric - 1,
-                day: this.natural({min: 1, max: m.days}),
+                day: this.natural({min: 1, max: daysInMonth}),
                 hour: this.hour(),
                 minute: this.minute(),
                 second: this.second(),
@@ -2472,7 +2724,7 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
                 }
             }
             if (type === null) {
-                throw new Error("Credit card type '" + options.name + "'' is not supported");
+                throw new RangeError("Credit card type '" + options.name + "'' is not supported");
             }
         } else {
             type = this.pick(types);
@@ -2504,7 +2756,7 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
         });
 
         if (returnAsString) {
-            return  currencies[0] + '/' + currencies[1];
+            return currencies[0].code + '/' + currencies[1].code;
         } else {
             return currencies;
         }
@@ -2538,7 +2790,7 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
 
         // If the year is this year, need to ensure month is greater than the
         // current month or this expiration will not be valid
-        if (exp.year === (new Date().getFullYear())) {
+        if (exp.year === (new Date().getFullYear()).toString()) {
             exp.month = this.exp_month({future: true});
         } else {
             exp.month = this.exp_month();
@@ -2550,13 +2802,14 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
     Chance.prototype.exp_month = function (options) {
         options = initOptions(options);
         var month, month_int,
-            curMonth = new Date().getMonth();
+            // Date object months are 0 indexed
+            curMonth = new Date().getMonth() + 1;
 
         if (options.future) {
             do {
                 month = this.month({raw: true}).numeric;
                 month_int = parseInt(month, 10);
-            } while (month_int < curMonth);
+            } while (month_int <= curMonth);
         } else {
             month = this.month({raw: true}).numeric;
         }
@@ -2589,8 +2842,8 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
 
     Chance.prototype.rpg = function (thrown, options) {
         options = initOptions(options);
-        if (thrown === null) {
-            throw new Error("A type of die roll must be included");
+        if (!thrown) {
+            throw new RangeError("A type of die roll must be included");
         } else {
             var bits = thrown.toLowerCase().split("d"),
                 rolls = [];
@@ -2654,6 +2907,33 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
         return (sum * 9) % 10;
     };
 
+    // MD5 Hash
+    Chance.prototype.md5 = function(options) {
+        var opts = { str: '', key: null, raw: false };
+
+        if (!options) {
+            opts.str = this.string();
+            options = {};
+        }
+        else if (typeof options === 'string') {
+            opts.str = options;
+            options = {};
+        }
+        else if (typeof options !== 'object') {
+            return null;
+        }
+        else if(options.constructor === 'Array') {
+            return null;
+        }
+
+        opts = initOptions(options, opts);
+
+        if(!opts.str){
+            throw new Error('A parameter is required to return an md5 hash.');
+        }
+
+        return this.bimd5.md5(opts.str, opts.key, opts.raw);
+    };
 
     var data = {
 
@@ -3149,10 +3429,15 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
         return new MersenneTwister(seed);
     };
 
+    Chance.prototype.blueimp_md5 = function () {
+        return new BlueImpMD5();
+    };
+
     // Mersenne Twister from https://gist.github.com/banksean/300494
     var MersenneTwister = function (seed) {
         if (seed === undefined) {
-            seed = new Date().getTime();
+            // kept random number same size as time used previously to ensure no unexpected results downstream
+            seed = Math.floor(Math.random()*Math.pow(10,13));
         }
         /* Period parameters */
         this.N = 624;
@@ -3276,6 +3561,254 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
         return (a * 67108864.0 + b) * (1.0 / 9007199254740992.0);
     };
 
+    // BlueImp MD5 hashing algorithm from https://github.com/blueimp/JavaScript-MD5
+    var BlueImpMD5 = function () {};
+
+    BlueImpMD5.prototype.VERSION = '1.0.1';
+
+    /*
+    * Add integers, wrapping at 2^32. This uses 16-bit operations internally
+    * to work around bugs in some JS interpreters.
+    */
+    BlueImpMD5.prototype.safe_add = function safe_add(x, y) {
+        var lsw = (x & 0xFFFF) + (y & 0xFFFF),
+            msw = (x >> 16) + (y >> 16) + (lsw >> 16);
+        return (msw << 16) | (lsw & 0xFFFF);
+    };
+
+    /*
+    * Bitwise rotate a 32-bit number to the left.
+    */
+    BlueImpMD5.prototype.bit_roll = function (num, cnt) {
+        return (num << cnt) | (num >>> (32 - cnt));
+    };
+
+    /*
+    * These functions implement the five basic operations the algorithm uses.
+    */
+    BlueImpMD5.prototype.md5_cmn = function (q, a, b, x, s, t) {
+        return this.safe_add(this.bit_roll(this.safe_add(this.safe_add(a, q), this.safe_add(x, t)), s), b);
+    };
+    BlueImpMD5.prototype.md5_ff = function (a, b, c, d, x, s, t) {
+        return this.md5_cmn((b & c) | ((~b) & d), a, b, x, s, t);
+    };
+    BlueImpMD5.prototype.md5_gg = function (a, b, c, d, x, s, t) {
+        return this.md5_cmn((b & d) | (c & (~d)), a, b, x, s, t);
+    };
+    BlueImpMD5.prototype.md5_hh = function (a, b, c, d, x, s, t) {
+        return this.md5_cmn(b ^ c ^ d, a, b, x, s, t);
+    };
+    BlueImpMD5.prototype.md5_ii = function (a, b, c, d, x, s, t) {
+        return this.md5_cmn(c ^ (b | (~d)), a, b, x, s, t);
+    };
+
+    /*
+    * Calculate the MD5 of an array of little-endian words, and a bit length.
+    */
+    BlueImpMD5.prototype.binl_md5 = function (x, len) {
+        /* append padding */
+        x[len >> 5] |= 0x80 << (len % 32);
+        x[(((len + 64) >>> 9) << 4) + 14] = len;
+
+        var i, olda, oldb, oldc, oldd,
+            a =  1732584193,
+            b = -271733879,
+            c = -1732584194,
+            d =  271733878;
+
+        for (i = 0; i < x.length; i += 16) {
+            olda = a;
+            oldb = b;
+            oldc = c;
+            oldd = d;
+
+            a = this.md5_ff(a, b, c, d, x[i],       7, -680876936);
+            d = this.md5_ff(d, a, b, c, x[i +  1], 12, -389564586);
+            c = this.md5_ff(c, d, a, b, x[i +  2], 17,  606105819);
+            b = this.md5_ff(b, c, d, a, x[i +  3], 22, -1044525330);
+            a = this.md5_ff(a, b, c, d, x[i +  4],  7, -176418897);
+            d = this.md5_ff(d, a, b, c, x[i +  5], 12,  1200080426);
+            c = this.md5_ff(c, d, a, b, x[i +  6], 17, -1473231341);
+            b = this.md5_ff(b, c, d, a, x[i +  7], 22, -45705983);
+            a = this.md5_ff(a, b, c, d, x[i +  8],  7,  1770035416);
+            d = this.md5_ff(d, a, b, c, x[i +  9], 12, -1958414417);
+            c = this.md5_ff(c, d, a, b, x[i + 10], 17, -42063);
+            b = this.md5_ff(b, c, d, a, x[i + 11], 22, -1990404162);
+            a = this.md5_ff(a, b, c, d, x[i + 12],  7,  1804603682);
+            d = this.md5_ff(d, a, b, c, x[i + 13], 12, -40341101);
+            c = this.md5_ff(c, d, a, b, x[i + 14], 17, -1502002290);
+            b = this.md5_ff(b, c, d, a, x[i + 15], 22,  1236535329);
+
+            a = this.md5_gg(a, b, c, d, x[i +  1],  5, -165796510);
+            d = this.md5_gg(d, a, b, c, x[i +  6],  9, -1069501632);
+            c = this.md5_gg(c, d, a, b, x[i + 11], 14,  643717713);
+            b = this.md5_gg(b, c, d, a, x[i],      20, -373897302);
+            a = this.md5_gg(a, b, c, d, x[i +  5],  5, -701558691);
+            d = this.md5_gg(d, a, b, c, x[i + 10],  9,  38016083);
+            c = this.md5_gg(c, d, a, b, x[i + 15], 14, -660478335);
+            b = this.md5_gg(b, c, d, a, x[i +  4], 20, -405537848);
+            a = this.md5_gg(a, b, c, d, x[i +  9],  5,  568446438);
+            d = this.md5_gg(d, a, b, c, x[i + 14],  9, -1019803690);
+            c = this.md5_gg(c, d, a, b, x[i +  3], 14, -187363961);
+            b = this.md5_gg(b, c, d, a, x[i +  8], 20,  1163531501);
+            a = this.md5_gg(a, b, c, d, x[i + 13],  5, -1444681467);
+            d = this.md5_gg(d, a, b, c, x[i +  2],  9, -51403784);
+            c = this.md5_gg(c, d, a, b, x[i +  7], 14,  1735328473);
+            b = this.md5_gg(b, c, d, a, x[i + 12], 20, -1926607734);
+
+            a = this.md5_hh(a, b, c, d, x[i +  5],  4, -378558);
+            d = this.md5_hh(d, a, b, c, x[i +  8], 11, -2022574463);
+            c = this.md5_hh(c, d, a, b, x[i + 11], 16,  1839030562);
+            b = this.md5_hh(b, c, d, a, x[i + 14], 23, -35309556);
+            a = this.md5_hh(a, b, c, d, x[i +  1],  4, -1530992060);
+            d = this.md5_hh(d, a, b, c, x[i +  4], 11,  1272893353);
+            c = this.md5_hh(c, d, a, b, x[i +  7], 16, -155497632);
+            b = this.md5_hh(b, c, d, a, x[i + 10], 23, -1094730640);
+            a = this.md5_hh(a, b, c, d, x[i + 13],  4,  681279174);
+            d = this.md5_hh(d, a, b, c, x[i],      11, -358537222);
+            c = this.md5_hh(c, d, a, b, x[i +  3], 16, -722521979);
+            b = this.md5_hh(b, c, d, a, x[i +  6], 23,  76029189);
+            a = this.md5_hh(a, b, c, d, x[i +  9],  4, -640364487);
+            d = this.md5_hh(d, a, b, c, x[i + 12], 11, -421815835);
+            c = this.md5_hh(c, d, a, b, x[i + 15], 16,  530742520);
+            b = this.md5_hh(b, c, d, a, x[i +  2], 23, -995338651);
+
+            a = this.md5_ii(a, b, c, d, x[i],       6, -198630844);
+            d = this.md5_ii(d, a, b, c, x[i +  7], 10,  1126891415);
+            c = this.md5_ii(c, d, a, b, x[i + 14], 15, -1416354905);
+            b = this.md5_ii(b, c, d, a, x[i +  5], 21, -57434055);
+            a = this.md5_ii(a, b, c, d, x[i + 12],  6,  1700485571);
+            d = this.md5_ii(d, a, b, c, x[i +  3], 10, -1894986606);
+            c = this.md5_ii(c, d, a, b, x[i + 10], 15, -1051523);
+            b = this.md5_ii(b, c, d, a, x[i +  1], 21, -2054922799);
+            a = this.md5_ii(a, b, c, d, x[i +  8],  6,  1873313359);
+            d = this.md5_ii(d, a, b, c, x[i + 15], 10, -30611744);
+            c = this.md5_ii(c, d, a, b, x[i +  6], 15, -1560198380);
+            b = this.md5_ii(b, c, d, a, x[i + 13], 21,  1309151649);
+            a = this.md5_ii(a, b, c, d, x[i +  4],  6, -145523070);
+            d = this.md5_ii(d, a, b, c, x[i + 11], 10, -1120210379);
+            c = this.md5_ii(c, d, a, b, x[i +  2], 15,  718787259);
+            b = this.md5_ii(b, c, d, a, x[i +  9], 21, -343485551);
+
+            a = this.safe_add(a, olda);
+            b = this.safe_add(b, oldb);
+            c = this.safe_add(c, oldc);
+            d = this.safe_add(d, oldd);
+        }
+        return [a, b, c, d];
+    };
+
+    /*
+    * Convert an array of little-endian words to a string
+    */
+    BlueImpMD5.prototype.binl2rstr = function (input) {
+        var i,
+            output = '';
+        for (i = 0; i < input.length * 32; i += 8) {
+            output += String.fromCharCode((input[i >> 5] >>> (i % 32)) & 0xFF);
+        }
+        return output;
+    };
+
+    /*
+    * Convert a raw string to an array of little-endian words
+    * Characters >255 have their high-byte silently ignored.
+    */
+    BlueImpMD5.prototype.rstr2binl = function (input) {
+        var i,
+            output = [];
+        output[(input.length >> 2) - 1] = undefined;
+        for (i = 0; i < output.length; i += 1) {
+            output[i] = 0;
+        }
+        for (i = 0; i < input.length * 8; i += 8) {
+            output[i >> 5] |= (input.charCodeAt(i / 8) & 0xFF) << (i % 32);
+        }
+        return output;
+    };
+
+    /*
+    * Calculate the MD5 of a raw string
+    */
+    BlueImpMD5.prototype.rstr_md5 = function (s) {
+        return this.binl2rstr(this.binl_md5(this.rstr2binl(s), s.length * 8));
+    };
+
+    /*
+    * Calculate the HMAC-MD5, of a key and some data (raw strings)
+    */
+    BlueImpMD5.prototype.rstr_hmac_md5 = function (key, data) {
+        var i,
+            bkey = this.rstr2binl(key),
+            ipad = [],
+            opad = [],
+            hash;
+        ipad[15] = opad[15] = undefined;
+        if (bkey.length > 16) {
+            bkey = this.binl_md5(bkey, key.length * 8);
+        }
+        for (i = 0; i < 16; i += 1) {
+            ipad[i] = bkey[i] ^ 0x36363636;
+            opad[i] = bkey[i] ^ 0x5C5C5C5C;
+        }
+        hash = this.binl_md5(ipad.concat(this.rstr2binl(data)), 512 + data.length * 8);
+        return this.binl2rstr(this.binl_md5(opad.concat(hash), 512 + 128));
+    };
+
+    /*
+    * Convert a raw string to a hex string
+    */
+    BlueImpMD5.prototype.rstr2hex = function (input) {
+        var hex_tab = '0123456789abcdef',
+            output = '',
+            x,
+            i;
+        for (i = 0; i < input.length; i += 1) {
+            x = input.charCodeAt(i);
+            output += hex_tab.charAt((x >>> 4) & 0x0F) +
+                hex_tab.charAt(x & 0x0F);
+        }
+        return output;
+    };
+
+    /*
+    * Encode a string as utf-8
+    */
+    BlueImpMD5.prototype.str2rstr_utf8 = function (input) {
+        return unescape(encodeURIComponent(input));
+    };
+
+    /*
+    * Take string arguments and return either raw or hex encoded strings
+    */
+    BlueImpMD5.prototype.raw_md5 = function (s) {
+        return this.rstr_md5(this.str2rstr_utf8(s));
+    };
+    BlueImpMD5.prototype.hex_md5 = function (s) {
+        return this.rstr2hex(this.raw_md5(s));
+    };
+    BlueImpMD5.prototype.raw_hmac_md5 = function (k, d) {
+        return this.rstr_hmac_md5(this.str2rstr_utf8(k), this.str2rstr_utf8(d));
+    };
+    BlueImpMD5.prototype.hex_hmac_md5 = function (k, d) {
+        return this.rstr2hex(this.raw_hmac_md5(k, d));
+    };
+
+    BlueImpMD5.prototype.md5 = function (string, key, raw) {
+        if (!key) {
+            if (!raw) {
+                return this.hex_md5(string);
+            }
+
+            return this.raw_md5(string);
+        }
+
+        if (!raw) {
+            return this.hex_hmac_md5(key, string);
+        }
+
+        return this.raw_hmac_md5(key, string);
+    };
 
     // CommonJS module
     if (typeof exports !== 'undefined') {
