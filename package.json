@@ -1,6 +1,6 @@
 {
   "name": "form-autofill",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Autofill your web forms with random test data for quick and easy testing.",
   "main": "Brocfile.js",
   "scripts": {
